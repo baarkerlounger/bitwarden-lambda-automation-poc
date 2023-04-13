@@ -251,6 +251,10 @@ mod aws {
     use aws_sdk_secretsmanager::Client;
     use std::collections::HashMap;
 
+    #[cfg(test)]
+    use mocktopus::macros::mockable;
+
+    #[cfg_attr(test, mockable)]
     pub async fn get_sm_secret_value(secret_id: &str) -> String {
         let config = aws_config::from_env().region("eu-west-2").load().await;
         let client = Client::new(&config);
@@ -286,6 +290,7 @@ mod tests {
     use super::*;
     use dotenvy::dotenv;
     use lambda_runtime::Context;
+    use mocktopus::mocking::*;
     use std::env;
 
     #[tokio::test]
@@ -299,5 +304,33 @@ mod tests {
         assert_eq!(result.contains("You are logged in!"), true);
         let result = bw_cli::cli_logout().await.unwrap();
         assert_eq!(result.contains("You have logged out"), true);
+    }
+
+    #[tokio::test]
+    async fn e2e_test() {
+        dotenv().expect(".env file not found");
+        aws::get_sm_secret_value.mock_safe(|secret_id| {
+            MockResult::Return(Box::pin(async move {
+                String::from(match secret_id {
+                    "bw-vault-api-client-id" => env::var("VAULT_API_CLIENT_ID").unwrap(),
+                    "bw-vault-api-client-secret" => env::var("VAULT_API_CLIENT_SECRET").unwrap(),
+                    "bw-master-password" => env::var("VAULT_MASTER_PASS").unwrap(),
+                    "bw-org-api-client-id" => env::var("PUBLIC_API_CLIENT_ID").unwrap(),
+                    "bw-org-api-client-secret" => env::var("PUBLIC_API_CLIENT_SECRET").unwrap(),
+                    _ => panic!("Unexpected secret id value"),
+                })
+            }))
+        });
+        let context = Context::default();
+        let payload = json!(
+            {
+              "collection_name": "test-collection-28",
+              "collection_external_id": "ext-id-1234",
+              "member_id": "86bf30cc-8887-4ee6-a0de-afd400e31971"
+            }
+        );
+        let event = LambdaEvent { payload, context };
+        let result = function_handler(event).await.unwrap();
+        assert_eq!(result["message"], "Created collection, test-collection-28 and added member 86bf30cc-8887-4ee6-a0de-afd400e31971!");
     }
 }

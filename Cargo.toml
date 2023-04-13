@@ -30,3 +30,4 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["f
 
 [dev-dependencies]
 dotenvy = "0.15.7"
+mocktopus = "0.8.0"
