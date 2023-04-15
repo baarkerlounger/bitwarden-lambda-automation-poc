@@ -28,8 +28,8 @@ async fn function_handler(event: LambdaEvent<Value>) -> Result<Value, Error> {
     let collection_external_id = event["collection_external_id"].as_str().unwrap_or("123");
 
     let create_collection_response = bw_cli::create_collection(
-        &collection_name,
-        &collection_external_id,
+        collection_name,
+        collection_external_id,
         &session_token,
         &organization_id,
     )
@@ -72,7 +72,7 @@ mod bw_cli {
 
     pub async fn cli_login(client_id: String, client_secret: String) -> Result<String, Error> {
         let output = Command::new("./bw")
-            .args(&["login", "--apikey"])
+            .args(["login", "--apikey"])
             .env("BW_CLIENTID", client_id)
             .env("BW_CLIENTSECRET", client_secret)
             .output()
@@ -83,7 +83,7 @@ mod bw_cli {
 
     pub async fn cli_logout() -> Result<String, Error> {
         let output = Command::new("./bw")
-            .args(&["logout"])
+            .args(["logout"])
             .output()
             .expect("Couldn't logout");
         let parsed = String::from_utf8(strip_ansi_escapes::strip(output.stdout).unwrap()).unwrap();
@@ -92,7 +92,7 @@ mod bw_cli {
 
     pub async fn unlock(password: String) -> Result<String, Error> {
         let output = Command::new("./bw")
-            .args(&["unlock", &password])
+            .args(["unlock", &password])
             .output()
             .expect("Couldn't unlock");
         let parsed = String::from_utf8(strip_ansi_escapes::strip(output.stdout).unwrap()).unwrap();
@@ -121,18 +121,18 @@ mod bw_cli {
             external_id: external_id.to_string(),
         };
         let json_template = serde_json::to_string(&collection_template)?;
-        let base64_template = general_purpose::STANDARD.encode(&json_template);
+        let base64_template = general_purpose::STANDARD.encode(json_template);
 
         // You have to pass organizationid as a CLI arg even though it's also encoded in the
         // org-collection template
         let output = Command::new("./bw")
-            .args(&[
+            .args([
                 "create",
                 "org-collection",
                 &format!("--organizationid={}", &organization_id),
                 &base64_template,
                 "--session",
-                &session_token,
+                session_token,
             ])
             .output()
             .expect("Couldn't create collection");
